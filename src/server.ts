@@ -4,11 +4,11 @@ import cors from 'cors';
 import morgan from 'morgan';
 import { ChunkGuard } from './utils/ChunkGuard';
 import { IncomingMessage } from 'http';
+import { RECOMMENDED_SERVERS } from './constants/servers';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
-const MCP_TARGET_URL =
-  process.env.MCP_TARGET_URL || 'https://google-chat-mcp.ephor.workers.dev';
+const MCP_TARGET_URL = RECOMMENDED_SERVERS[0].endpoint_url.replace('/sse', '');
 
 // ─── generic middleware ───────────────────────────────────────────────────────
 app.use(cors());
