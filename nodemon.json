@@ -1,0 +1,9 @@
+{
+  "watch": ["src/**/*", "servers.ts"],
+  "ext": "ts,js,json",
+  "ignore": ["dist/**/*", "node_modules/**/*"],
+  "delay": 1000,
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
