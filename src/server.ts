@@ -4,7 +4,6 @@ import cors from 'cors';
 import morgan from 'morgan';
 import { ChunkGuard } from './utils/ChunkGuard';
 import { IncomingMessage } from 'http';
-import { RECOMMENDED_SERVERS } from './constants/servers';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -29,20 +28,54 @@ app.get('/health', (_, res) =>
 
 // mount the proxy (everything except /health)
 app.use((req, res, next) => {
-  const host = req.headers['x-forwarded-host'] || req.headers.host; // e.g., app1.local
-  console.log('host:', host);
-  // Use host for mapping to different mcp servers or if query and params can be properly passed. Since they miss out on the well known paths
-  // Currently hardcoded
+  if (req.path === '/health') return next();
 
-  const MCP_TARGET_URL = RECOMMENDED_SERVERS[0].endpoint_url.replace(
-    '/sse',
-    ''
-  );
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const queryParams = req.query;
+  const mcp_server_url = queryParams.mcp_server_url as string;
+
+  console.log('🔍 [SERVER SELECTION]');
+  console.log('   host:', host);
+  console.log('   queryParams:', queryParams);
+  console.log('   mcp_server_url:', mcp_server_url);
+
+  // const mcpServer = RECOMMENDED_SERVERS.find(
+  //   (server) => server.endpoint_url === mcp_server_url
+  // );
+
+  if (!mcp_server_url) {
+    console.error(
+      `❌ [SERVER ERROR] Unknown mcp_server_url: ${mcp_server_url}`
+    );
+    return res.status(400).json({
+      error: 'Unknown MCP server',
+      server_url: mcp_server_url,
+    });
+  }
+
+  const MCP_TARGET_URL = mcp_server_url.replace('/sse', '');
+  console.log('🎯 [TARGET] Selected server:', mcp_server_url);
+  console.log('   Target URL:', MCP_TARGET_URL);
+
+  // STRIP mcp_server_id from query params before forwarding
+  const cleanQuery = { ...queryParams };
+  delete cleanQuery.mcp_server_url;
+
+  console.log('🧹 [STRIPPED] Original query:', queryParams);
+  console.log('   Clean query:', cleanQuery);
+
+  // Reconstruct clean query string
+  const cleanQueryString = new URLSearchParams(cleanQuery as any).toString();
+  const cleanUrl = req.path + (cleanQueryString ? `?${cleanQueryString}` : '');
+
+  console.log('🔄 [FORWARDING] Clean URL:', cleanUrl);
+
   const proxy = createProxyMiddleware({
     target: MCP_TARGET_URL,
     changeOrigin: true,
     secure: true,
     selfHandleResponse: true, // << important
+    // pathRewrite: () => cleanUrl, // Use the clean URL without mcp_server_id
     on: {
       proxyRes: (proxyRes: IncomingMessage, req: Request, res: Response) => {
         console.log(`✅ [PROXY RES] ${proxyRes.statusCode} for ${req.url}`);
