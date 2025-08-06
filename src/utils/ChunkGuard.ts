@@ -9,6 +9,7 @@ export class ChunkGuard extends Transform {
   private bytesSeen = 0;
   private tokensSeen = 0;
   private readonly opt: GuardOpts;
+  private combinedChunk: string = '';
 
   constructor(opt: GuardOpts) {
     super();
@@ -24,22 +25,20 @@ export class ChunkGuard extends Transform {
 
     // Log the SSE chunk for debugging
     const chunkString = chunk.toString('utf8');
+    const chunkTokens = this.opt.tokenLimit
+      ? Math.ceil(chunkString.length / 4)
+      : 0;
+
     console.log(
       `📡 [SSE CHUNK] ${this.bytesSeen} bytes total: ${chunkString.substring(0, 500)}${chunkString.length > 500 ? '...' : ''}`
     );
 
     if (this.opt.tokenLimit) {
       // Simple approximation: 4 characters = 1 token
-      const str = chunk.toString('utf8');
-      const dataLines = str
-        .split('\n')
-        .filter((l: string) => l.startsWith('data:'))
-        .map((l: string) => l.slice(5).trim());
-      for (const line of dataLines) {
-        this.tokensSeen += Math.ceil(line.length / 4);
-      }
+      // Count tokens based on the actual chunk content
+      this.tokensSeen += chunkTokens;
       console.log(
-        `🔢 [TOKEN COUNT] ${this.tokensSeen} tokens seen so far (4 chars = 1 token)`
+        `\n\n🔢 [TOKEN COUNT] +${chunkTokens} tokens this chunk (${chunkString.length} chars / 4), ${this.tokensSeen} total\n\n`
       );
     }
 
@@ -58,6 +57,8 @@ export class ChunkGuard extends Transform {
       return cb(); // we're done
     }
 
+    // this.combinedChunk += chunkString;
+    // console.log(`\n\n📦 [COMBINED CHUNK] ${this.combinedChunk}\n\n`);
     this.push(chunk);
     cb();
   }
