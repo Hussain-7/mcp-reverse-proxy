@@ -1,6 +1,6 @@
 # MCP Reverse Proxy
 
-A reverse proxy for Model Context Protocol (MCP) servers with response truncation capabilities.
+A reverse proxy for Model Context Protocol (MCP) servers with response truncation and auth passthrough capabilities.
 
 ## Features
 
